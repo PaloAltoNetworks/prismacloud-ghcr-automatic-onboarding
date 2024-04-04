@@ -1,80 +1,27 @@
-# Purpose of the Script
+# GitHub Container Registry List
 
-This Python script is designed to streamline and automate the process of onboarding Azure Container Registries (ACR) into Prisma Cloud. Given the complexity and potential volume of Azure subscriptions and container registries within those subscriptions, manually managing them can become a significant challenge. This script offers a solution by automatically onboard all ACR into Compute by listing  into Prisma Cloud and subsequently onboarding the respective container registries. 
+This Python application lists the GitHub Container Registries (GHCR) for a specified GitHub organization. It utilizes the GitHub API to fetch registry details and supports limiting the number of registries returned. Additionally, it offers a debug logging feature for more detailed output during execution.
 
-## Account Onboarding Information
-In this script, you have the ability to selectively onboard container registries across various Azure subscriptions into Prisma Cloud by specifying the Azure subscriptions ID in the `authorized_sub.conf` configuration file.
+## Features
 
-However, it's important to note the following behavior:
+- Fetch GHCR details for a specific GitHub organization.
+- Can limit the number of registries returned.
+- Onboard GHCR registries to Prisma Cloud
+- Debug logging for troubleshooting and development purposes.
 
-**Onboarding All Registries Across All Subscriptions**
+## Prerequisites
 
-If you leave the `authorized_sub.conf` file empty, the script will onboard all registries across all Azure subscriptions that have been onboarded into Prisma Cloud.
+Before running this application, ensure you have the following:
 
-**Preventing Specific Prisma Cloud Accounts from Onboarding**
+- Python 3.9 or higher installed.
+- A GitHub Personal Access Token with permissions to access the organization's packages.
+- The `dotenv` library if you're using environment variables to manage your GitHub token and other configurations.
 
-You can prevent specific Prisma Cloud accounts from being onboarded using the `unauthorized_sub.conf` file. This file allows you to list the Prisma Cloud Account Names (not the Azure subscription names) that you do not want to be onboarded.
+## Usage
 
-## Pre requesites from Azure
+Run the script from the command line, providing the necessary arguments:
 
-### Create a SP on Azure
-
-Use the az ad sp create-for-rbac command to create a Service Principal:
-```bash
-az account set --subscription "<your-subscription-id>"
-az ad sp create-for-rbac --name "<your-app-name>"
+```sh
+python main.py -o <OrganizationName> -t <GHCRTokenName> -l <Limit> --debug
 ```
 
-This will return a JSON object that contains your service principal's appId and password.  
-
-To assign the same Service Principal to multiple subscriptions, you would have to create role assignments for each subscriptions.  
-So, for each of your subscriptions, run a command like this:
-```bash
-az role assignment create --assignee <app-id> --role AcrPull --scope /subscriptions/<subscription-id>
-```
-
-### Automate the SP Creation and the Role Assignment
-
-You can use the bash script in this repository with the following command
-
-```bash
-./create_service_principal.sh "<myAppName>" "<tenant_id>"
-```
-
-## Set your environment variables
-
-Copy .env.example to .env file and edit the following informations
-
-```bash
-PRISMA_API_URL="__REDACTED__"
-PRISMA_ACCESS_KEY="__REDACTED__"
-PRISMA_SECRET_KEY="__REDACTED__"
-AZURE_CLIENT_ID="__REDACTED__"
-AZURE_CLIENT_SECRET="__REDACTED__"
-AZURE_TENANT_ID="__REDACTED__"
-```
-
-[OPTIONAL] Or you can export the information into environment variables
-
-```bash
-export PRISMA_API_URL="__REDACTED__"
-export PRISMA_ACCESS_KEY="__REDACTED__"
-export PRISMA_SECRET_KEY="__REDACTED__"
-export AZURE_CLIENT_ID="__REDACTED__"
-export AZURE_CLIENT_SECRET="__REDACTED__"
-export AZURE_TENANT_ID="__REDACTED__"
-```
-
-## Run the Python script
-
-```bash
-python3 -m virtualenv venv && source venv/bin/activate
-pip install -r requirements.txt
-python3 acr_automatic_onboarding.py --help
-## Onboard ACR container registries from CSPM
-python3 acr_automatic_onboarding.py --onboard
-## Provides a summary of registries with the number of images in descending order
-python3 acr_automatic_onboarding.py --report
-## Onboard only ACR whihc are not yet onboarded
-python3 acr_automatic_onboarding.py --update
-```
