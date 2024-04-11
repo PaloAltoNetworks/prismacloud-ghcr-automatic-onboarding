@@ -11,21 +11,22 @@ from dotenv import load_dotenv
 logger = logging.getLogger()
 
 
-def add_container_registries(base_url, token, existing_container_registries, ghcr_list, ghcr_orgamization, github_token_name):
+def add_container_registries(base_url, token, existing_container_registries, ghcr_list, ghcr_organization, github_token_name):
     url = f"{base_url}/api/v1/settings/registry?project=Central+Console&scanLater=false"
     headers = {"content-type": "application/json; charset=UTF-8", "Authorization": "Bearer " + token}
 
     for registry in ghcr_list:
         # Check if the registry already exists
+        image_name = f"{ghcr_organization.lower()}/{registry['name'].lower()}"
         if not any(
-            existing_registry["repository"] == registry["name"]
+            existing_registry["repository"] == image_name
             for existing_registry in existing_container_registries["specifications"]
         ):
             new_registry = {
-                "version": "gitlab",
+                "version": "2",
                 "registry": "ghcr.io",
                 "namespace": "",
-                "repository": f"{ghcr_orgamization.lower()}/{registry['name'].lower()}",
+                "repository": image_name,
                 "tag": "",
                 "credentialID": f"{github_token_name}",
                 "os": "linux",
@@ -34,14 +35,13 @@ def add_container_registries(base_url, token, existing_container_registries, ghc
                 "cap": 5,
                 "scanners": 2,
                 "versionPattern": "",
-                "gitlabRegistrySpec": {},
             }
 
             # Add the new registry to the specifications list
             existing_container_registries["specifications"].append(new_registry)
-            logger.info(f"Registry to be added: {registry['name'].lower()}.azurecr.io")
+            logger.info(f"Registry to be added: {registry['name'].lower()}")
         else:
-            logger.info(f"Registry {registry['name']}.azurecr.io already exists in Prisma Cloud")
+            logger.info(f"Registry {registry['name']} already exists in Prisma Cloud")
 
     # Convert the updated registries to JSON
     payload = json.dumps(existing_container_registries)
@@ -132,25 +132,33 @@ def set_github_pat_token(base_url, token, github_token, github_token_name):
 
 def list_ghcr_images(org_name, github_token, limit):
     limit = int(limit)
-    url = f"https://api.github.com/orgs/{org_name}/packages?package_type=container"
-    logger.info(f"Github URL: {url}")
-    headers = {
-        'Authorization': f'Bearer {github_token}'
-    }
-    response = requests.get(url, headers=headers)
-    
     gh_registries = []
-    if response.status_code == 200:
-        packages = response.json()
-        for package in packages:
-            if package['package_type'] == 'container':
-                registry = {
-                    "name": f"{package['name']}",
-                    "visibility": f"{package['visibility']}"
-                }
-                gh_registries.append(registry)
-    else:
-        logger.info(f"Failed to fetch packages. HTTP Status Code: {response.status_code}")
+    done = False
+    page = 0
+
+    while (not done):
+        page += 1
+        url = f"https://api.github.com/orgs/{org_name}/packages?package_type=container&page={page}"
+        logger.info(f"Github URL: {url}")
+        headers = {
+            'Authorization': f'Bearer {github_token}'
+        }
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            packages = response.json()
+            if len(packages) == 0:
+                done = True
+            for package in packages:
+                if package['package_type'] == 'container':
+                    registry = {
+                        "name": f"{package['name']}",
+                        "visibility": f"{package['visibility']}"
+                    }
+                    gh_registries.append(registry)
+        else:
+            logger.info(f"Failed to fetch packages. HTTP Status Code: {response.status_code}")
+            done = True
 
     if limit == 0:
         return gh_registries
@@ -254,9 +262,9 @@ def main():
         logger.error("Unable to authenticate.")
         return
     
-    gh_registries = list_ghcr_images(ghcr_orgamization, github_token, limit)    
+    gh_registries = list_ghcr_images(ghcr_orgamization, github_token, limit)
     
-    set_github_pat_token(compute_url, compute_token, github_token, ghcr_token_name)
+    # set_github_pat_token(compute_url, compute_token, github_token, ghcr_token_name)
 
     container_registries_list_from_cwp = get_container_registries(compute_url, compute_token)
     add_container_registries(compute_url, compute_token, container_registries_list_from_cwp, gh_registries, ghcr_orgamization, ghcr_token_name)
