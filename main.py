@@ -23,7 +23,7 @@ def add_container_registries(base_url, token, existing_container_registries, ghc
             for existing_registry in existing_container_registries["specifications"]
         ):
             new_registry = {
-                "version": "2",
+                "version": "gitlab",
                 "registry": "ghcr.io",
                 "namespace": "",
                 "repository": image_name,
@@ -113,7 +113,7 @@ def set_github_pat_token(base_url, token, github_token, github_token_name):
             "url": "",
             "skipVerify": False,
             "_id": f"{github_token_name}",
-            "type": "basic",
+            "type": "gitlabToken",
         }
     )
     headers = {"content-type": "application/json; charset=UTF-8", "Authorization": "Bearer " + token}
@@ -266,7 +266,7 @@ def main():
 
     gh_registries = list_ghcr_images(ghcr_orgamization, github_token, limit)
 
-    # set_github_pat_token(compute_url, compute_token, github_token, ghcr_token_name)
+    set_github_pat_token(compute_url, compute_token, github_token, ghcr_token_name)
 
     container_registries_list_from_cwp = get_container_registries(compute_url, compute_token)
     add_container_registries(
