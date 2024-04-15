@@ -131,8 +131,8 @@ def set_github_pat_token(base_url, token, github_token, github_token_name):
     logger.debug(f"Response text: {response.text}")
 
 
-def list_ghcr_images(org_name, github_token, limit=0):    
-    if (int)limit < 0:
+def list_ghcr_images(org_name, github_token, limit=0):
+    if limit < 0:
         raise ValueError("Limit must be 0 (for no limit) or a positive integer.")
 
     headers = {"Authorization": f"Bearer {github_token}"}
@@ -258,6 +258,11 @@ def main():
     if token is None:
         logger.error("Unable to authenticate.")
         return
+    
+    try:
+        limit = int(limit)  # Convert limit to an integer
+    except ValueError:
+        raise ValueError("Limit must be a valid integer.")
 
     gh_registries = list_ghcr_images(ghcr_orgamization, github_token, limit)
 
