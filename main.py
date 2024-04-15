@@ -113,7 +113,7 @@ def set_github_pat_token(base_url, token, github_token, github_token_name):
             "url": "",
             "skipVerify": False,
             "_id": f"{github_token_name}",
-            "type": "gitlabToken",
+            "type": "basic",
         }
     )
     headers = {"content-type": "application/json; charset=UTF-8", "Authorization": "Bearer " + token}
