@@ -54,7 +54,7 @@ def add_container_registries(base_url, token, existing_container_registries, ghc
         logger.error(f"{response.text}")
         return None
 
-    logger.info(f"All GHCR registry for your Github Organization have been added successfully")
+    logger.info("All GHCR registry for your Github Organization have been added successfully")
 
 
 def get_container_registries(base_url, token):
@@ -103,19 +103,19 @@ def get_images_number_per_regristry(base_url, token):
     return sorted_registry_count
 
 
-def set_github_pat_token(base_url, token, github_token, github_token_name):    
-    url = f"{base_url}/api/v1/credentials"     
+def set_github_pat_token(base_url, token, github_token, github_token_name):
+    url = f"{base_url}/api/v1/credentials"
     payload = json.dumps(
-            {
-                "serviceAccount": {},                
-                "apiToken": {"encrypted": "", "plain": f"{github_token}"},
-                "description": "Created by Python Script",
-                "url": "",
-                "skipVerify": False,
-                "_id": f"{github_token_name}",
-                "type": "gitlabToken"
-            }
-    )                
+        {
+            "serviceAccount": {},
+            "apiToken": {"encrypted": "", "plain": f"{github_token}"},
+            "description": "Created by Python Script",
+            "url": "",
+            "skipVerify": False,
+            "_id": f"{github_token_name}",
+            "type": "gitlabToken",
+        }
+    )
     headers = {"content-type": "application/json; charset=UTF-8", "Authorization": "Bearer " + token}
 
     try:
@@ -130,40 +130,39 @@ def set_github_pat_token(base_url, token, github_token, github_token_name):
     logger.debug(f"Response headers: {response.headers}")
     logger.debug(f"Response text: {response.text}")
 
-def list_ghcr_images(org_name, github_token, limit):
-    limit = int(limit)
+
+def list_ghcr_images(org_name, github_token, limit=0):
+    if limit < 0:
+        raise ValueError("Limit must be 0 (for no limit) or a positive integer.")
+
+    headers = {"Authorization": f"Bearer {github_token}"}
     gh_registries = []
-    done = False
-    page = 0
+    page = 1
 
-    while (not done):
-        page += 1
+    # Continue looping if limit is 0 (no limit) or we haven't reached the limit yet.
+    while limit == 0 or len(gh_registries) < limit:
         url = f"https://api.github.com/orgs/{org_name}/packages?package_type=container&page={page}"
-        logger.info(f"Github URL: {url}")
-        headers = {
-            'Authorization': f'Bearer {github_token}'
-        }
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code == 200:
-            packages = response.json()
-            if len(packages) == 0:
-                done = True
-            for package in packages:
-                if package['package_type'] == 'container':
-                    registry = {
-                        "name": f"{package['name']}",
-                        "visibility": f"{package['visibility']}"
-                    }
-                    gh_registries.append(registry)
-        else:
-            logger.info(f"Failed to fetch packages. HTTP Status Code: {response.status_code}")
-            done = True
+        logging.info(f"Fetching data from URL: {url}")
 
-    if limit == 0:
-        return gh_registries
-    else:
-        return gh_registries[:limit]  # Return up to 'limit' items
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            logging.error(f"Failed to fetch packages, HTTP status code: {response.status_code}")
+            break
+
+        packages = response.json()
+        if not packages:
+            break
+
+        for package in packages:
+            if package["package_type"] == "container":
+                registry = {"name": package["name"], "visibility": package["visibility"]}
+                gh_registries.append(registry)
+                if limit != 0 and len(gh_registries) == limit:
+                    break
+        else:
+            page += 1  # Only increment the page if we haven't filled our limit.
+
+    return gh_registries
 
 
 def get_compute_url(base_url, token):
@@ -202,12 +201,13 @@ def login_compute(base_url, access_key, secret_key):
     response = requests.post(url, headers=headers, data=payload)
     return response.json()["token"]
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--organization", help="Github Organization")
     parser.add_argument("-t", "--ghcr-token-name", help="Github Token Name in Prisma Cloud")
     parser.add_argument("-l", "--limit", help="Github Token Name in Prisma Cloud", default=0)
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging.") 
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
 
     if args.debug:
@@ -215,10 +215,9 @@ def main():
     else:
         logging_level = logging.INFO
 
-    logging.basicConfig(level=logging_level,
-                        format='%(asctime)s - %(levelname)s - %(message)s',
-                        filename='app.log',
-                        filemode='a')
+    logging.basicConfig(
+        level=logging_level, format="%(asctime)s - %(levelname)s - %(message)s", filename="app.log", filemode="a"
+    )
 
     # Create a console handler
     console_handler = logging.StreamHandler()
@@ -226,8 +225,8 @@ def main():
     # Add the console handler to the logger
     logger.addHandler(console_handler)
 
-    logger.info(f"======================= START =======================")
-    logger.debug(f"======================= DEBUG MODE =======================")
+    logger.info("======================= START =======================")
+    logger.debug("======================= DEBUG MODE =======================")
 
     load_dotenv()
 
@@ -240,15 +239,13 @@ def main():
     limit = args.limit
 
     if not url or not identity or not secret or not github_token:
-        logger.error(
-            "PRISMA_API_URL, PRISMA_ACCESS_KEY, PRISMA_SECRET_KEY, GITHUB_TOKEN variables are not set."
-        )
+        logger.error("PRISMA_API_URL, PRISMA_ACCESS_KEY, PRISMA_SECRET_KEY, GITHUB_TOKEN variables are not set.")
         return
-    
+
     if not ghcr_orgamization:
         logger.error("GitHub organization name is required. Use --organization to specify it.")
         return
-    
+
     if not ghcr_token_name:
         logger.error("GitHub Token name is required. Use --ghcr-token-name to specify it.")
         return
@@ -261,16 +258,17 @@ def main():
     if token is None:
         logger.error("Unable to authenticate.")
         return
-    
+
     gh_registries = list_ghcr_images(ghcr_orgamization, github_token, limit)
-    
+
     # set_github_pat_token(compute_url, compute_token, github_token, ghcr_token_name)
 
     container_registries_list_from_cwp = get_container_registries(compute_url, compute_token)
-    add_container_registries(compute_url, compute_token, container_registries_list_from_cwp, gh_registries, ghcr_orgamization, ghcr_token_name)
+    add_container_registries(
+        compute_url, compute_token, container_registries_list_from_cwp, gh_registries, ghcr_orgamization, ghcr_token_name
+    )
 
-
-    logger.info(f"======================= END =======================")
+    logger.info("======================= END =======================")
 
 
 if __name__ == "__main__":
