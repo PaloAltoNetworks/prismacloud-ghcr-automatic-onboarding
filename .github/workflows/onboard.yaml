@@ -30,4 +30,4 @@ jobs:
 
       - name: List all container registries
         run: |
-          python main.py --organization PaloAltoNetworks --ghcr-token-name smelotte_github_token --limit 3 --debug
+          python main.py --organization PaloAltoNetworks --ghcr-token-name smelotte_github_token --limit 3
