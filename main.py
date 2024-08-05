@@ -32,8 +32,8 @@ def add_container_registries(base_url, token, existing_container_registries, ghc
                 "os": "linux",
                 "harborDeploymentSecurity": False,
                 "collections": ["All"],
-                "cap": 5,
-                "scanners": 2,
+                "cap": 2,
+                "scanners": 10,
                 "versionPattern": "",
             }
 
@@ -141,7 +141,7 @@ def list_ghcr_images(org_name, github_token, limit=0):
 
     # Continue looping if limit is 0 (no limit) or we haven't reached the limit yet.
     while limit == 0 or len(gh_registries) < limit:
-        url = f"https://api.github.com/orgs/{org_name}/packages?package_type=container&page={page}"
+        url = f"https://api.github.com/orgs/{org_name}/packages?package_type=container&page={page}&per_page=100"
         logging.info(f"Fetching data from URL: {url}")
 
         response = requests.get(url, headers=headers)
